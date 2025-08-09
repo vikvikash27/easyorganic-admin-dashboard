@@ -24,6 +24,7 @@ export interface Product {
   status: 'In Stock' | 'Low Stock' | 'Out of Stock';
   imageUrl: string;
   description?: string;
+  fssai?: string;
 }
 
 // Defines a product when it's in the shopping cart, including quantity.

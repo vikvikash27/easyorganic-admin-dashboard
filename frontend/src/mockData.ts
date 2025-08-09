@@ -1,4 +1,4 @@
-import { AdminUser, Product, Order, Customer, CustomerUser } from './types';
+import { AdminUser, Product, Order, Customer } from './types';
 
 // Mock admin user data for authentication simulation.
 export const mockUsers: Record<string, AdminUser> = {
@@ -24,28 +24,6 @@ export const mockUsers: Record<string, AdminUser> = {
     role: 'staff',
   },
 };
-
-// Mock customer user data for storefront authentication.
-export const mockCustomerUsers: Record<string, CustomerUser> = {
-  'customer@example.com': {
-    id: 'cust-user-001',
-    name: 'Jane Doe',
-    email: 'customer@example.com',
-  },
-};
-
-// Function to simulate signing up a new customer.
-export const addMockCustomerUser = (user: CustomerUser): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (mockCustomerUsers[user.email.toLowerCase()]) {
-      reject(new Error("User with this email already exists."));
-    } else {
-      mockCustomerUsers[user.email.toLowerCase()] = user;
-      resolve();
-    }
-  });
-};
-
 
 // Mock product data for the product management module.
 export const mockProducts: Product[] = [

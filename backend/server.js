@@ -5,7 +5,7 @@ const app = express();
 // Use the PORT environment variable in production, or 3001 for local development
 const PORT = process.env.PORT || 3001;
 
-// Mock Data (copied from frontend/src/mockData.ts for simplicity)
+// Mock Data
 const mockProducts = [
   {
     id: "prod-001",
@@ -17,6 +17,7 @@ const mockProducts = [
     imageUrl: "https://picsum.photos/seed/honey1/400",
     description:
       "A delightful and aromatic honey sourced from a variety of wildflowers, perfect for tea, toast, or baking.",
+    fssai: "10012011000001",
   },
   {
     id: "prod-002",
@@ -28,6 +29,7 @@ const mockProducts = [
     imageUrl: "https://picsum.photos/seed/honey2/400",
     description:
       "Light and clear with a mild, sweet flavor, Acacia honey is a versatile favorite that resists crystallization.",
+    fssai: "10012011000002",
   },
   {
     id: "prod-003",
@@ -39,6 +41,7 @@ const mockProducts = [
     imageUrl: "https://picsum.photos/seed/honey3/400",
     description:
       "Known for its unique antibacterial properties, this rich, earthy honey from New Zealand is a premium wellness product.",
+    fssai: "10012011000003",
   },
   {
     id: "prod-004",
@@ -50,6 +53,7 @@ const mockProducts = [
     imageUrl: "https://picsum.photos/seed/ghee/400",
     description:
       "Clarified butter made from the milk of grass-fed cows, our ghee is a lactose-free, high-heat cooking oil with a nutty flavor.",
+    fssai: "10012011000004",
   },
   {
     id: "prod-005",
@@ -61,6 +65,7 @@ const mockProducts = [
     imageUrl: "https://picsum.photos/seed/flour/400",
     description:
       "Stone-ground from whole organic wheat berries, this flour is rich in fiber and perfect for rustic breads and rotis.",
+    fssai: "10012011000005",
   },
 ];
 
@@ -165,13 +170,51 @@ const mockCustomers = [
   },
 ];
 
+// Mock customer user data for storefront authentication.
+const mockCustomerUsers = {
+  "customer@example.com": {
+    id: "cust-user-001",
+    name: "Jane Doe",
+    email: "customer@example.com",
+  },
+};
+
 // Enable CORS for all routes
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" })); // Increase limit for base64 images
 
 // API Endpoints
 app.get("/api/products", (req, res) => {
   res.json(mockProducts);
+});
+
+app.post("/api/products", (req, res) => {
+  const { name, category, price, stock, description, imageUrl, fssai } =
+    req.body;
+  if (!name || !category || price === undefined || stock === undefined) {
+    return res.status(400).send("Missing required product fields");
+  }
+
+  const newProduct = {
+    id: `prod-${Date.now()}`,
+    name,
+    category,
+    price: Number(price),
+    stock: Number(stock),
+    status:
+      Number(stock) > 10
+        ? "In Stock"
+        : Number(stock) > 0
+        ? "Low Stock"
+        : "Out of Stock",
+    imageUrl:
+      imageUrl || `https://picsum.photos/seed/${name.replace(/\s+/g, "")}/400`,
+    description,
+    fssai,
+  };
+
+  mockProducts.unshift(newProduct);
+  res.status(201).json(newProduct);
 });
 
 app.get("/api/products/:id", (req, res) => {
@@ -200,6 +243,53 @@ app.get("/api/orders/by-customer", (req, res) => {
 
 app.get("/api/customers", (req, res) => {
   res.json(mockCustomers);
+});
+
+app.post("/api/customers/login", (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).send("Email is required");
+  }
+  const foundUser = mockCustomerUsers[email.toLowerCase()];
+  if (foundUser) {
+    res.json(foundUser);
+  } else {
+    res.status(404).send("User not found");
+  }
+});
+
+app.post("/api/customers", (req, res) => {
+  const { name, email } = req.body;
+  if (!name || !email) {
+    return res.status(400).send("Name and email are required");
+  }
+
+  if (
+    mockCustomerUsers[email.toLowerCase()] ||
+    mockCustomers.find((c) => c.email.toLowerCase() === email.toLowerCase())
+  ) {
+    return res.status(409).send("User with this email already exists.");
+  }
+
+  const newCustomerId = `cust-${Date.now()}`;
+  const newCustomer = {
+    id: newCustomerId,
+    name,
+    email,
+    avatar: `https://i.pravatar.cc/150?u=${email}`,
+    totalSpent: 0,
+    lastOrder: new Date().toISOString().split("T")[0],
+  };
+  mockCustomers.push(newCustomer);
+
+  const newCustomerUser = {
+    id: `cust-user-${Date.now()}`,
+    name,
+    email,
+  };
+  mockCustomerUsers[email.toLowerCase()] = newCustomerUser;
+
+  res.status(201).json(newCustomerUser);
 });
 
 app.get("/api/dashboard-stats", (req, res) => {

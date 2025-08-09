@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from "react";
 import { CustomerUser } from "../types";
-import { mockCustomerUsers, addMockCustomerUser } from "../mockData";
 
 interface CustomerAuthContextType {
   customer: CustomerUser | null;
@@ -13,6 +12,8 @@ interface CustomerAuthContextType {
 export const CustomerAuthContext = createContext<
   CustomerAuthContextType | undefined
 >(undefined);
+
+const API_URL = "http://localhost:3001";
 
 interface CustomerAuthProviderProps {
   children: ReactNode;
@@ -39,27 +40,36 @@ export const CustomerAuthProvider: React.FC<CustomerAuthProviderProps> = ({
   }, []);
 
   const login = async (email: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = mockCustomerUsers[email.toLowerCase()];
-        if (foundUser) {
-          setCustomer(foundUser);
-          localStorage.setItem("customer-user", JSON.stringify(foundUser));
-          resolve();
-        } else {
-          reject(new Error("User not found"));
-        }
-      }, 500);
+    const response = await fetch(`${API_URL}/api/customers/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
     });
+
+    if (!response.ok) {
+      throw new Error("User not found");
+    }
+
+    const user = await response.json();
+    setCustomer(user);
+    localStorage.setItem("customer-user", JSON.stringify(user));
   };
 
   const signup = async (name: string, email: string): Promise<void> => {
-    const newUser: CustomerUser = {
-      id: `cust-user-${Date.now()}`,
-      name,
-      email,
-    };
-    return addMockCustomerUser(newUser);
+    const response = await fetch(`${API_URL}/api/customers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, email }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Could not sign up.");
+    }
   };
 
   const logout = () => {
