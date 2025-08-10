@@ -115,7 +115,7 @@ const OrderHistoryPage: React.FC = () => {
                   {order.status}
                 </Badge>
                 <p className="text-sm text-slate-500 mt-2">
-                  {order.items} item(s)
+                  {order.items.length} item(s)
                 </p>
               </div>
               <div>

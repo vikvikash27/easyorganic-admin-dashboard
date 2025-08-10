@@ -6,13 +6,20 @@ import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import MapInput from "../components/MapInput";
 import LocationSelectorModal from "../components/LocationSelectorModal";
-import { Address } from "../types";
+import { Address, CartItem } from "../types";
+import { SpinnerIcon } from "../components/icons";
+
+const API_URL = "http://localhost:3001";
 
 const CheckoutPage: React.FC = () => {
   const { cartItems, cartTotal, clearCart } = useCart();
   const { customer } = useCustomerAuth();
   const navigate = useNavigate();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"Card" | "COD">("Card");
   const [address, setAddress] = useState<Address>({
     fullName: customer?.name || "",
     street: "",
@@ -30,60 +37,79 @@ const CheckoutPage: React.FC = () => {
   };
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
-    // Optimistically update location for map preview
     setAddress((prev) => ({ ...prev, location }));
-
-    // Check if Google Maps API and Geocoder are available
-    if (!window.google || !window.google.maps.Geocoder) {
-      console.error("Google Maps Geocoder not available.");
-      return;
-    }
-
+    if (!window.google || !window.google.maps.Geocoder) return;
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ location }, (results, status) => {
       if (status === "OK" && results && results[0]) {
-        const addressComponents = results[0].address_components;
+        const ac = results[0].address_components;
         const get = (type: string) =>
-          addressComponents.find((c) => c.types.includes(type))?.long_name ||
-          "";
-
-        const streetNumber = get("street_number");
-        const route = get("route");
-        const street = `${streetNumber} ${route}`.trim();
-
-        const city = get("locality") || get("administrative_area_level_3");
-        const state = get("administrative_area_level_1");
-        const zip = get("postal_code");
-        const country = get("country");
-
+          ac.find((c) => c.types.includes(type))?.long_name || "";
+        const street = `${get("street_number")} ${get("route")}`.trim();
         setAddress((prev) => ({
           ...prev,
           street: street || prev.street,
-          city: city || prev.city,
-          state: state || prev.state,
-          zip: zip || prev.zip,
-          country: country || prev.country,
+          city:
+            get("locality") || get("administrative_area_level_3") || prev.city,
+          state: get("administrative_area_level_1") || prev.state,
+          zip: get("postal_code") || prev.zip,
         }));
-      } else {
-        console.error(
-          `Geocode was not successful for the following reason: ${status}`
-        );
       }
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Order submitted:", {
-      address,
-      items: cartItems,
+    setIsLoading(true);
+    setError("");
+
+    const orderPayload = {
+      customer,
+      items: cartItems.map((item: CartItem) => ({
+        productId: item.id,
+        productName: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      })),
       total: cartTotal,
-    });
-    clearCart();
-    navigate("/order-confirmation");
+      address,
+      paymentMethod,
+    };
+
+    if (paymentMethod === "Card") {
+      // For card payments, navigate to the payment gateway page
+      // and pass the order details in the navigation state.
+      navigate("/payment-gateway", { state: { order: orderPayload } });
+      setIsLoading(false); // Stop loading indicator on this page
+      return;
+    }
+
+    // For COD, create the order directly
+    try {
+      const response = await fetch(`${API_URL}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          errorText || "Failed to place order. Please try again."
+        );
+      }
+
+      clearCart();
+      navigate("/order-confirmation");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // This check is now handled by CustomerProtectedRoute, but it's good for safety.
   if (cartItems.length === 0) {
     navigate("/cart");
     return null;
@@ -163,6 +189,47 @@ const CheckoutPage: React.FC = () => {
                 onOpenModal={() => setIsModalOpen(true)}
               />
             </div>
+            <div className="pt-4">
+              <h3 className="text-lg font-medium text-slate-700 mb-2">
+                Payment Method
+              </h3>
+              <div className="flex gap-4">
+                <label
+                  className={`flex items-center p-3 border rounded-lg cursor-pointer ${
+                    paymentMethod === "Card"
+                      ? "border-brand-primary bg-indigo-50"
+                      : "border-slate-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="Card"
+                    checked={paymentMethod === "Card"}
+                    onChange={() => setPaymentMethod("Card")}
+                    className="mr-2"
+                  />
+                  Card
+                </label>
+                <label
+                  className={`flex items-center p-3 border rounded-lg cursor-pointer ${
+                    paymentMethod === "COD"
+                      ? "border-brand-primary bg-indigo-50"
+                      : "border-slate-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="COD"
+                    checked={paymentMethod === "COD"}
+                    onChange={() => setPaymentMethod("COD")}
+                    className="mr-2"
+                  />
+                  Cash on Delivery
+                </label>
+              </div>
+            </div>
           </div>
         </div>
         <div className="lg:col-span-2">
@@ -201,8 +268,15 @@ const CheckoutPage: React.FC = () => {
                 <span>Total</span> <span>₹{cartTotal.toFixed(2)}</span>
               </div>
             </div>
-            <Button type="submit" className="w-full mt-6">
-              Place Order
+            {error && (
+              <p className="text-sm text-red-600 mt-4 text-center">{error}</p>
+            )}
+            <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+              {isLoading ? (
+                <SpinnerIcon className="mx-auto" />
+              ) : (
+                `Place Order (₹${cartTotal.toFixed(2)})`
+              )}
             </Button>
           </div>
         </div>

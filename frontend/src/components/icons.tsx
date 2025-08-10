@@ -68,6 +68,24 @@ export const OrderIcon: React.FC<IconProps> = (props) => (
   </svg>
 );
 
+export const PaymentsIcon: React.FC<IconProps> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+    <line x1="2" y1="10" x2="22" y2="10"></line>
+  </svg>
+);
+
 export const CustomerIcon: React.FC<IconProps> = (props) => (
   <svg
     {...props}
@@ -423,5 +441,42 @@ export const GooglePlayBadgeIcon: React.FC<IconProps> = (props) => (
     >
       Google Play
     </text>
+  </svg>
+);
+
+export const CreditCardIcon: React.FC<IconProps> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+    <line x1="2" y1="10" x2="22" y2="10"></line>
+  </svg>
+);
+
+export const UpiIcon: React.FC<IconProps> = (props) => (
+  <svg
+    {...props}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M11 19.5V4.5H13V19.5H11Z" fill="currentColor" />
+    <path
+      d="M16.5 4.5H14V19.5H16.5C19.2614 19.5 21.5 17.2614 21.5 14.5V9.5C21.5 6.73858 19.2614 4.5 16.5 4.5Z"
+      fill="currentColor"
+    />
+    <path
+      d="M5.5 19.5H8V11.5C8 8.46243 5.53757 6 2.5 6V6C2.5 6 2.5 6 2.5 6V6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6V19.5H5.5Z"
+      fill="currentColor"
+    />
   </svg>
 );

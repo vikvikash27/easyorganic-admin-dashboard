@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAdminAuth } from "../hooks/useAdminAuth";
+import { useSocket } from "../hooks/useSocket";
 import StatCard from "../components/dashboard/StatCard";
 import SalesChart from "../components/dashboard/SalesChart";
 import { OrderIcon, ProductIcon, SpinnerIcon } from "../components/icons";
@@ -18,6 +19,7 @@ const API_URL = "http://localhost:3001";
 
 const Dashboard: React.FC = () => {
   const { user } = useAdminAuth();
+  const { socket } = useSocket();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,21 @@ const Dashboard: React.FC = () => {
 
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatsUpdate = (newStats: DashboardStats) => {
+      console.log("Received stats update:", newStats);
+      setStats(newStats);
+    };
+
+    socket.on("stats_update", handleStatsUpdate);
+
+    return () => {
+      socket.off("stats_update", handleStatsUpdate);
+    };
+  }, [socket]);
 
   if (loading) {
     return (
@@ -70,7 +87,7 @@ const Dashboard: React.FC = () => {
           color="green"
         />
         <StatCard
-          title="New Orders"
+          title="Pending Orders"
           value={stats?.newOrdersCount.toString() ?? "0"}
           icon={<OrderIcon className="h-6 w-6" />}
           color="blue"

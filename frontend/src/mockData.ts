@@ -36,13 +36,11 @@ export const mockProducts: Product[] = [
 
 // Mock order data for the order management module.
 export const mockOrders: Order[] = [
-  { id: '#A001', customerName: 'Alice Johnson', customerEmail: 'alice@example.com', date: '2024-05-20', total: 630, status: 'Delivered', items: 2 },
-  { id: '#A002', customerName: 'Bob Williams', customerEmail: 'bob@example.com', date: '2024-05-21', total: 950, status: 'Shipped', items: 1 },
-  { id: '#A003', customerName: 'Charlie Brown', customerEmail: 'charlie@example.com', date: '2024-05-21', total: 280, status: 'Pending', items: 1 },
-  { id: '#A004', customerName: 'Diana Prince', customerEmail: 'diana@example.com', date: '2024-05-22', total: 110, status: 'Cancelled', items: 1 },
-  { id: '#A005', customerName: 'Ethan Hunt', customerEmail: 'ethan@example.com', date: '2024-05-23', total: 760, status: 'Shipped', items: 2 },
-  { id: '#A006', customerName: 'Jane Doe', customerEmail: 'customer@example.com', date: '2024-05-24', total: 350, status: 'Delivered', items: 1 },
-  { id: '#A007', customerName: 'Jane Doe', customerEmail: 'customer@example.com', date: '2024-05-25', total: 110, status: 'Shipped', items: 1 },
+  { id: '#A001', customerName: 'Alice Johnson', customerEmail: 'alice@example.com', date: '2024-05-20', total: 630, status: 'Delivered', items: [{productId: 'prod-001', productName: 'Wildflower Honey', quantity: 1, price: 280}, {productId: 'prod-002', productName: 'Acacia Honey', quantity: 1, price: 350}], paymentMethod: 'Card', transactionId: 'txn_1' },
+  { id: '#A002', customerName: 'Bob Williams', customerEmail: 'bob@example.com', date: '2024-05-21', total: 950, status: 'Shipped', items: [{productId: 'prod-003', productName: 'Manuka Honey', quantity: 1, price: 950}], paymentMethod: 'Card', transactionId: 'txn_2' },
+  { id: '#A003', customerName: 'Charlie Brown', customerEmail: 'charlie@example.com', date: '2024-05-21', total: 280, status: 'Pending', items: [{productId: 'prod-001', productName: 'Wildflower Honey', quantity: 1, price: 280}], paymentMethod: 'COD', transactionId: 'txn_3' },
+  { id: '#A004', customerName: 'Diana Prince', customerEmail: 'diana@example.com', date: '2024-05-22', total: 110, status: 'Cancelled', items: [{productId: 'prod-005', productName: 'Whole Wheat Flour', quantity: 1, price: 110}], paymentMethod: 'Card', transactionId: 'txn_4' },
+  { id: '#A005', customerName: 'Ethan Hunt', customerEmail: 'ethan@example.com', date: '2024-05-23', total: 760, status: 'Shipped', items: [{productId: 'prod-001', productName: 'Wildflower Honey', quantity: 1, price: 280}], paymentMethod: 'Card', transactionId: 'txn_5' },
 ];
 
 // Mock customer data for the customer management module.

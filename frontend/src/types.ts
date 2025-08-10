@@ -32,6 +32,14 @@ export interface CartItem extends Product {
   quantity: number;
 }
 
+// Defines an item within an order.
+export interface OrderItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  price: number;
+}
+
 // Defines the structure for a customer order.
 export type OrderStatus = 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
 export interface Order {
@@ -41,8 +49,11 @@ export interface Order {
   date: string;
   total: number;
   status: OrderStatus;
-  items: number;
+  items: OrderItem[];
+  paymentMethod: 'Card' | 'COD';
+  transactionId: string;
 }
+
 
 // Defines the structure for a customer profile.
 export interface Customer {
