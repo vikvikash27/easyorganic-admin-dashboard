@@ -42,19 +42,29 @@ export interface OrderItem {
   price: number;
 }
 
-// Defines the structure for a customer order.
-export type OrderStatus = 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
+// NEW: Expanded order statuses for the tracker
+export type OrderStatus = 'Pending' | 'Processing' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+
+// NEW: Defines a single event in the order's history timeline
+export interface StatusEvent {
+    status: OrderStatus;
+    timestamp: string;
+    notes?: string;
+}
+
+// UPDATED: Defines the structure for a customer order with tracking details.
 export interface Order {
   id: string;
   customerName: string;
   customerEmail: string;
-  date: string;
+  orderTimestamp: string; // Changed from 'date'
   total: number;
-  status: OrderStatus;
+  status: OrderStatus; // The current status
   items: OrderItem[];
   paymentMethod: 'Card' | 'COD';
   transactionId: string;
   address?: Address;
+  statusHistory: StatusEvent[]; // The full timeline of the order
 }
 
 

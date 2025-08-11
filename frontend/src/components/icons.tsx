@@ -475,7 +475,7 @@ export const UpiIcon: React.FC<IconProps> = (props) => (
       fill="currentColor"
     />
     <path
-      d="M5.5 19.5H8V11.5C8 8.46243 5.53757 6 2.5 6V6C2.5 6 2.5 6 2.5 6V6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6V19.5H5.5Z"
+      d="M5.5 19.5H8V11.5C8 8.46243 5.53757 6 2.5 6V6C2.5 6 2.5 6 2.5 6V6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6C2.5 6 2.5 6 2.5 6V19.5H5.5Z"
       fill="currentColor"
     />
   </svg>
@@ -496,5 +496,88 @@ export const LoaderIcon: React.FC<IconProps> = (props) => (
     strokeLinejoin="round"
   >
     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
+
+// Icons for Order Tracker
+export const PackageCheckIcon: React.FC<IconProps> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M16 16h2a2 2 0 0 0 2-2v-7l-5-4-5 4v7a2 2 0 0 0 2 2h2" />
+    <path d="M9 9h6" />
+    <path d="m9 13 2 2 4-4" />
+  </svg>
+);
+
+export const TruckIcon: React.FC<IconProps> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M10 17h4" />
+    <path d="M2 9h10" />
+    <path d="M2 13h6" />
+    <path d="M2 17h2" />
+    <path d="M14 9h8" />
+    <path d="M14 13h4" />
+    <path d="M14 17h2" />
+    <path d="M5 9v8" />
+    <path d="M19 9v8" />
+    <path d="M22 17H5.58a1 1 0 0 1-.8-1.6L6 13l-1.42-2.4a1 1 0 0 1 .8-1.6H22" />
+  </svg>
+);
+
+export const HomeIcon: React.FC<IconProps> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+
+export const XCircleIcon: React.FC<IconProps> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="15" y1="9" x2="9" y2="15"></line>
+    <line x1="9" y1="9" x2="15" y2="15"></line>
   </svg>
 );

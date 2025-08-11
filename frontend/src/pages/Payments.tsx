@@ -50,7 +50,7 @@ const Payments: React.FC = () => {
     doc.text(`Order ID: ${order.id}`, 20, 40);
     doc.text(`Transaction ID: ${order.transactionId}`, 20, 47);
     doc.text(
-      `Order Date: ${new Date(order.date).toLocaleDateString()}`,
+      `Order Date: ${new Date(order.orderTimestamp).toLocaleDateString()}`,
       20,
       54
     );
@@ -102,7 +102,11 @@ const Payments: React.FC = () => {
     { accessor: "transactionId", header: "Transaction ID" },
     { accessor: "id", header: "Order ID" },
     { accessor: "customerName", header: "Customer" },
-    { accessor: "date", header: "Date" },
+    {
+      accessor: "orderTimestamp",
+      header: "Date",
+      cell: (item) => new Date(item.orderTimestamp).toLocaleDateString(),
+    },
     {
       accessor: "total",
       header: "Amount",

@@ -12,7 +12,17 @@ const API_URL = "http://localhost:3001";
 const statusFilters: (OrderStatus | "All")[] = [
   "All",
   "Pending",
+  "Processing",
   "Shipped",
+  "Out for Delivery",
+  "Delivered",
+  "Cancelled",
+];
+const updatableStatuses: OrderStatus[] = [
+  "Pending",
+  "Processing",
+  "Shipped",
+  "Out for Delivery",
   "Delivered",
   "Cancelled",
 ];
@@ -30,11 +40,14 @@ const OrderStatusSelector: React.FC<{
     const newStatus = e.target.value as OrderStatus;
     setIsLoading(true);
     try {
-      await fetch(`${API_URL}/api/orders/${order.id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await fetch(
+        `${API_URL}/api/orders/${encodeURIComponent(order.id)}/status`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
       // The parent component will receive a socket event to update the state
       // but we can update it locally for immediate feedback.
       setCurrentStatus(newStatus);
@@ -45,6 +58,15 @@ const OrderStatusSelector: React.FC<{
     }
   };
 
+  // An order cannot be changed if it's already delivered or cancelled by an admin
+  if (order.status === "Delivered" || order.status === "Cancelled") {
+    return (
+      <Badge color={order.status === "Delivered" ? "green" : "red"}>
+        {order.status}
+      </Badge>
+    );
+  }
+
   return (
     <div className="relative">
       <select
@@ -53,7 +75,7 @@ const OrderStatusSelector: React.FC<{
         disabled={isLoading}
         className="pl-3 pr-8 py-1.5 border border-slate-300 rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-brand-primary"
       >
-        {statusFilters.slice(1).map((status) => (
+        {updatableStatuses.map((status) => (
           <option key={status} value={status}>
             {status}
           </option>
@@ -82,7 +104,8 @@ const Orders: React.FC = () => {
         setOrders(
           data.sort(
             (a: Order, b: Order) =>
-              new Date(b.date).getTime() - new Date(a.date).getTime()
+              new Date(b.orderTimestamp).getTime() -
+              new Date(a.orderTimestamp).getTime()
           )
         );
       } catch (err) {
@@ -133,7 +156,11 @@ const Orders: React.FC = () => {
   const columns: ColumnDefinition<Order>[] = [
     { accessor: "id", header: "Order ID" },
     { accessor: "customerName", header: "Customer" },
-    { accessor: "date", header: "Date" },
+    {
+      accessor: "orderTimestamp",
+      header: "Timestamp",
+      cell: (item) => new Date(item.orderTimestamp).toLocaleString(),
+    },
     {
       accessor: "total",
       header: "Total",
@@ -147,10 +174,12 @@ const Orders: React.FC = () => {
           color={
             item.status === "Delivered"
               ? "green"
-              : item.status === "Shipped"
+              : item.status === "Shipped" || item.status === "Out for Delivery"
               ? "blue"
-              : item.status === "Pending"
+              : item.status === "Processing"
               ? "yellow"
+              : item.status === "Pending"
+              ? "gray"
               : "red"
           }
         >
@@ -178,19 +207,29 @@ const Orders: React.FC = () => {
     if (error) {
       return <div className="text-red-500 text-center p-8">Error: {error}</div>;
     }
-    return <Table data={filteredOrders} columns={columns} />;
+    return (
+      <Table
+        data={filteredOrders}
+        columns={columns}
+        rowClassName={(order) =>
+          order.status === "Cancelled" ? "bg-red-50 hover:bg-red-100" : ""
+        }
+      />
+    );
   };
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Orders</h1>
       <Card>
-        <div className="p-4 flex space-x-2 border-b border-slate-200">
+        <div className="p-4 flex space-x-2 border-b border-slate-200 overflow-x-auto">
           {statusFilters.map((status) => (
             <Button
               key={status}
               variant={filter === status ? "primary" : "secondary"}
+              size="sm"
               onClick={() => setFilter(status)}
+              className="flex-shrink-0"
             >
               {status}
             </Button>

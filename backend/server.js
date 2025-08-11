@@ -83,7 +83,7 @@ let mockOrders = [
     id: "#A001",
     customerName: "Alice Johnson",
     customerEmail: "alice@example.com",
-    date: "2024-05-20",
+    orderTimestamp: "2024-05-20T10:30:05.123Z",
     total: 630,
     status: "Delivered",
     items: [
@@ -102,12 +102,33 @@ let mockOrders = [
     ],
     paymentMethod: "Card",
     transactionId: `txn_${Date.now() - 500000}`,
+    address: {
+      fullName: "Alice Johnson",
+      street: "456 Oak Avenue",
+      city: "Metropolis",
+      state: "State",
+      zip: "12345",
+      country: "India",
+      phone: "9876543210",
+      location: { lat: 28.6139, lng: 77.209 },
+    },
+    statusHistory: [
+      { status: "Pending", timestamp: "2024-05-20T10:30:10.123Z" },
+      { status: "Processing", timestamp: "2024-05-20T11:00:00.000Z" },
+      {
+        status: "Shipped",
+        timestamp: "2024-05-20T18:00:00.000Z",
+        notes: "Carrier: BlueDart, Tracking: BD12345",
+      },
+      { status: "Out for Delivery", timestamp: "2024-05-21T09:00:00.000Z" },
+      { status: "Delivered", timestamp: "2024-05-21T14:35:10.000Z" },
+    ],
   },
   {
     id: "#A002",
     customerName: "Bob Williams",
     customerEmail: "bob@example.com",
-    date: "2024-05-21",
+    orderTimestamp: "2024-05-21T11:45:30.456Z",
     total: 950,
     status: "Shipped",
     items: [
@@ -120,12 +141,31 @@ let mockOrders = [
     ],
     paymentMethod: "Card",
     transactionId: `txn_${Date.now() - 400000}`,
+    address: {
+      fullName: "Bob Williams",
+      street: "789 Pine Street",
+      city: "Gotham",
+      state: "State",
+      zip: "54321",
+      country: "India",
+      phone: "9876543211",
+      location: { lat: 19.076, lng: 72.8777 },
+    },
+    statusHistory: [
+      { status: "Pending", timestamp: "2024-05-21T11:45:35.456Z" },
+      { status: "Processing", timestamp: "2024-05-21T12:30:00.000Z" },
+      {
+        status: "Shipped",
+        timestamp: "2024-05-22T10:00:00.000Z",
+        notes: "Carrier: Delhivery, Tracking: DL67890",
+      },
+    ],
   },
   {
     id: "#A003",
     customerName: "Charlie Brown",
     customerEmail: "charlie@example.com",
-    date: "2024-05-21",
+    orderTimestamp: "2024-05-21T15:00:15.789Z",
     total: 280,
     status: "Pending",
     items: [
@@ -138,12 +178,25 @@ let mockOrders = [
     ],
     paymentMethod: "COD",
     transactionId: `txn_${Date.now() - 300000}`,
+    address: {
+      fullName: "Charlie Brown",
+      street: "123 Maple Lane",
+      city: "Star City",
+      state: "State",
+      zip: "67890",
+      country: "India",
+      phone: "9876543212",
+      location: { lat: 12.9716, lng: 77.5946 },
+    },
+    statusHistory: [
+      { status: "Pending", timestamp: "2024-05-21T15:00:20.789Z" },
+    ],
   },
   {
     id: "#A004",
     customerName: "Diana Prince",
     customerEmail: "diana@example.com",
-    date: "2024-05-22",
+    orderTimestamp: "2024-05-22T09:05:00.111Z",
     total: 110,
     status: "Cancelled",
     items: [
@@ -156,31 +209,24 @@ let mockOrders = [
     ],
     paymentMethod: "Card",
     transactionId: `txn_${Date.now() - 200000}`,
-  },
-  {
-    id: "#A005",
-    customerName: "Ethan Hunt",
-    customerEmail: "ethan@example.com",
-    date: "2024-05-23",
-    total: 760,
-    status: "Shipped",
-    items: [
+    address: {
+      fullName: "Diana Prince",
+      street: "101 Amazon Trail",
+      city: "Themyscira",
+      state: "State",
+      zip: "11223",
+      country: "India",
+      phone: "9876543213",
+      location: { lat: 13.0827, lng: 80.2707 },
+    },
+    statusHistory: [
+      { status: "Pending", timestamp: "2024-05-22T09:05:05.111Z" },
       {
-        productId: "prod-001",
-        productName: "Wildflower Honey",
-        quantity: 1,
-        price: 280,
-      },
-      {
-        productId: "prod-004",
-        productName: "Organic Ghee",
-        quantity: 1,
-        price: 650,
-        stock: 0,
+        status: "Cancelled",
+        timestamp: "2024-05-22T10:00:00.000Z",
+        notes: "Cancelled by admin.",
       },
     ],
-    paymentMethod: "Card",
-    transactionId: `txn_${Date.now() - 100000}`,
   },
 ];
 
@@ -241,8 +287,13 @@ const getDashboardStats = () => {
     (o) => o.status === "Pending"
   ).length;
   const totalProducts = mockProducts.length;
-  const recentOrders = [...mockOrders].reverse().slice(0, 5);
-
+  const recentOrders = [...mockOrders]
+    .sort(
+      (a, b) =>
+        new Date(b.orderTimestamp).getTime() -
+        new Date(a.orderTimestamp).getTime()
+    )
+    .slice(0, 5);
   return { totalRevenue, newOrdersCount, totalProducts, recentOrders };
 };
 
@@ -282,16 +333,35 @@ app.get("/api/products/:id", (req, res) => {
 });
 
 app.get("/api/orders", (req, res) => res.json(mockOrders));
+
+// NEW: Get a single order by ID
+app.get("/api/orders/:id", (req, res) => {
+  // The '#' in the ID needs to be URL encoded on the frontend.
+  const orderId = decodeURIComponent(req.params.id);
+  const order = mockOrders.find((o) => o.id === orderId);
+  if (order) {
+    res.json(order);
+  } else {
+    res.status(404).send("Order not found");
+  }
+});
+
 app.get("/api/orders/by-customer", (req, res) => {
   const email = req.query.email;
   if (!email) return res.status(400).send("Email query parameter is required");
   const customerOrders = mockOrders.filter(
     (order) => order.customerEmail.toLowerCase() === email.toLowerCase()
   );
-  res.json(customerOrders);
+  res.json(
+    customerOrders.sort(
+      (a, b) =>
+        new Date(b.orderTimestamp).getTime() -
+        new Date(a.orderTimestamp).getTime()
+    )
+  );
 });
 
-// NEW: Customer places an order
+// UPDATED: Customer places an order
 app.post("/api/orders", (req, res) => {
   const { customer, items, total, paymentMethod, address } = req.body;
   if (
@@ -310,17 +380,21 @@ app.post("/api/orders", (req, res) => {
           "Missing or invalid order data. Customer, items, total, and address are required.",
       });
   }
+
+  const now = new Date().toISOString();
+
   const newOrder = {
     id: `#A${Date.now().toString().slice(-4)}`,
     customerName: customer.name,
     customerEmail: customer.email,
-    date: new Date().toISOString().split("T")[0],
+    orderTimestamp: now,
     total,
     status: "Pending",
     items,
     paymentMethod,
     address,
     transactionId: `txn_${Date.now()}`,
+    statusHistory: [{ status: "Pending", timestamp: now }],
   };
   mockOrders.unshift(newOrder);
 
@@ -333,16 +407,21 @@ app.post("/api/orders", (req, res) => {
     .json({ message: "Order placed successfully", order: newOrder });
 });
 
-// NEW: Admin updates an order's status
+// UPDATED: Admin updates an order's status
 app.put("/api/orders/:id/status", (req, res) => {
-  const { status } = req.body;
-  const orderId = req.params.id;
+  const { status, notes } = req.body; // notes can be added by admin
+  const orderId = decodeURIComponent(req.params.id);
   const order = mockOrders.find((o) => o.id === orderId);
 
   if (order) {
     order.status = status;
+    const newStatusEvent = {
+      status,
+      timestamp: new Date().toISOString(),
+      ...(notes && { notes }),
+    };
+    order.statusHistory.push(newStatusEvent);
 
-    // REAL-TIME: Emit events for status change and stats update
     io.emit("order_updated", order);
     io.emit("stats_update", getDashboardStats());
 
@@ -357,6 +436,38 @@ app.put("/api/orders/:id/status", (req, res) => {
   } else {
     res.status(404).send("Order not found");
   }
+});
+
+// NEW: Customer cancels an order
+app.post("/api/orders/:id/cancel", (req, res) => {
+  const orderId = decodeURIComponent(req.params.id);
+  const order = mockOrders.find((o) => o.id === orderId);
+
+  if (!order) {
+    return res.status(404).send("Order not found");
+  }
+
+  if (order.status !== "Pending") {
+    return res
+      .status(400)
+      .json({
+        message:
+          "This order cannot be cancelled as it is already being processed.",
+      });
+  }
+
+  order.status = "Cancelled";
+  order.statusHistory.push({
+    status: "Cancelled",
+    timestamp: new Date().toISOString(),
+    notes: "Cancelled by customer",
+  });
+
+  // REAL-TIME: Emit events for status change and stats update
+  io.emit("order_updated", order); // Use the same event as admin update
+  io.emit("stats_update", getDashboardStats());
+
+  res.json(order);
 });
 
 app.get("/api/customers", (req, res) => res.json(mockCustomers));

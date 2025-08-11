@@ -34,6 +34,7 @@ import CustomerSignupPage from "./pages/CustomerSignupPage";
 import MyAccountPage from "./pages/MyAccountPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
 import PaymentGatewayPage from "./pages/PaymentGatewayPage";
+import CustomerOrderDetailsPage from "./pages/CustomerOrderDetailsPage";
 
 function App() {
   return (
@@ -88,6 +89,14 @@ function App() {
                       element={
                         <CustomerProtectedRoute>
                           <OrderHistoryPage />
+                        </CustomerProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="account/orders/:id"
+                      element={
+                        <CustomerProtectedRoute>
+                          <CustomerOrderDetailsPage />
                         </CustomerProtectedRoute>
                       }
                     />
