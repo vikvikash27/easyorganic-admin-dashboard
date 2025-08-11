@@ -1,12 +1,21 @@
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
-// Use the PORT environment variable in production, or 3001 for local development
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for this example
+    methods: ["GET", "POST", "PUT"],
+  },
+});
+
 const PORT = process.env.PORT || 3001;
 
-// Mock Data
-const mockProducts = [
+// --- Mock Data Store ---
+let mockProducts = [
   {
     id: "prod-001",
     name: "Wildflower Honey",
@@ -69,7 +78,7 @@ const mockProducts = [
   },
 ];
 
-const mockOrders = [
+let mockOrders = [
   {
     id: "#A001",
     customerName: "Alice Johnson",
@@ -77,7 +86,22 @@ const mockOrders = [
     date: "2024-05-20",
     total: 630,
     status: "Delivered",
-    items: 2,
+    items: [
+      {
+        productId: "prod-001",
+        productName: "Wildflower Honey",
+        quantity: 1,
+        price: 280,
+      },
+      {
+        productId: "prod-002",
+        productName: "Acacia Honey",
+        quantity: 1,
+        price: 350,
+      },
+    ],
+    paymentMethod: "Card",
+    transactionId: `txn_${Date.now() - 500000}`,
   },
   {
     id: "#A002",
@@ -86,7 +110,16 @@ const mockOrders = [
     date: "2024-05-21",
     total: 950,
     status: "Shipped",
-    items: 1,
+    items: [
+      {
+        productId: "prod-003",
+        productName: "Manuka Honey",
+        quantity: 1,
+        price: 950,
+      },
+    ],
+    paymentMethod: "Card",
+    transactionId: `txn_${Date.now() - 400000}`,
   },
   {
     id: "#A003",
@@ -95,7 +128,16 @@ const mockOrders = [
     date: "2024-05-21",
     total: 280,
     status: "Pending",
-    items: 1,
+    items: [
+      {
+        productId: "prod-001",
+        productName: "Wildflower Honey",
+        quantity: 1,
+        price: 280,
+      },
+    ],
+    paymentMethod: "COD",
+    transactionId: `txn_${Date.now() - 300000}`,
   },
   {
     id: "#A004",
@@ -104,7 +146,16 @@ const mockOrders = [
     date: "2024-05-22",
     total: 110,
     status: "Cancelled",
-    items: 1,
+    items: [
+      {
+        productId: "prod-005",
+        productName: "Whole Wheat Flour",
+        quantity: 1,
+        price: 110,
+      },
+    ],
+    paymentMethod: "Card",
+    transactionId: `txn_${Date.now() - 200000}`,
   },
   {
     id: "#A005",
@@ -113,29 +164,27 @@ const mockOrders = [
     date: "2024-05-23",
     total: 760,
     status: "Shipped",
-    items: 2,
-  },
-  {
-    id: "#A006",
-    customerName: "Jane Doe",
-    customerEmail: "customer@example.com",
-    date: "2024-05-24",
-    total: 350,
-    status: "Delivered",
-    items: 1,
-  },
-  {
-    id: "#A007",
-    customerName: "Jane Doe",
-    customerEmail: "customer@example.com",
-    date: "2024-05-25",
-    total: 110,
-    status: "Shipped",
-    items: 1,
+    items: [
+      {
+        productId: "prod-001",
+        productName: "Wildflower Honey",
+        quantity: 1,
+        price: 280,
+      },
+      {
+        productId: "prod-004",
+        productName: "Organic Ghee",
+        quantity: 1,
+        price: 650,
+        stock: 0,
+      },
+    ],
+    paymentMethod: "Card",
+    transactionId: `txn_${Date.now() - 100000}`,
   },
 ];
 
-const mockCustomers = [
+let mockCustomers = [
   {
     id: "cust-01",
     name: "Alice Johnson",
@@ -170,7 +219,6 @@ const mockCustomers = [
   },
 ];
 
-// Mock customer user data for storefront authentication.
 const mockCustomerUsers = {
   "customer@example.com": {
     id: "cust-user-001",
@@ -179,22 +227,33 @@ const mockCustomerUsers = {
   },
 };
 
-// Enable CORS for all routes
+// --- Middleware ---
 app.use(cors());
-app.use(express.json({ limit: "10mb" })); // Increase limit for base64 images
+app.use(express.json({ limit: "10mb" }));
 
-// API Endpoints
-app.get("/api/products", (req, res) => {
-  res.json(mockProducts);
-});
+// --- Helper Functions ---
+const getDashboardStats = () => {
+  const totalRevenue = mockOrders.reduce(
+    (acc, order) => (order.status !== "Cancelled" ? acc + order.total : acc),
+    0
+  );
+  const newOrdersCount = mockOrders.filter(
+    (o) => o.status === "Pending"
+  ).length;
+  const totalProducts = mockProducts.length;
+  const recentOrders = [...mockOrders].reverse().slice(0, 5);
 
+  return { totalRevenue, newOrdersCount, totalProducts, recentOrders };
+};
+
+// --- API Endpoints ---
+app.get("/api/products", (req, res) => res.json(mockProducts));
 app.post("/api/products", (req, res) => {
   const { name, category, price, stock, description, imageUrl, fssai } =
     req.body;
   if (!name || !category || price === undefined || stock === undefined) {
     return res.status(400).send("Missing required product fields");
   }
-
   const newProduct = {
     id: `prod-${Date.now()}`,
     name,
@@ -212,68 +271,113 @@ app.post("/api/products", (req, res) => {
     description,
     fssai,
   };
-
   mockProducts.unshift(newProduct);
+  io.emit("stats_update", getDashboardStats()); // Also update stats on new product
   res.status(201).json(newProduct);
 });
-
 app.get("/api/products/:id", (req, res) => {
   const product = mockProducts.find((p) => p.id === req.params.id);
-  if (product) {
-    res.json(product);
-  } else {
-    res.status(404).send("Product not found");
-  }
+  if (product) res.json(product);
+  else res.status(404).send("Product not found");
 });
 
-app.get("/api/orders", (req, res) => {
-  res.json(mockOrders);
-});
-
+app.get("/api/orders", (req, res) => res.json(mockOrders));
 app.get("/api/orders/by-customer", (req, res) => {
   const email = req.query.email;
-  if (!email) {
-    return res.status(400).send("Email query parameter is required");
-  }
+  if (!email) return res.status(400).send("Email query parameter is required");
   const customerOrders = mockOrders.filter(
     (order) => order.customerEmail.toLowerCase() === email.toLowerCase()
   );
   res.json(customerOrders);
 });
 
-app.get("/api/customers", (req, res) => {
-  res.json(mockCustomers);
+// NEW: Customer places an order
+app.post("/api/orders", (req, res) => {
+  const { customer, items, total, paymentMethod, address } = req.body;
+  if (
+    !customer ||
+    !customer.name ||
+    !customer.email ||
+    !Array.isArray(items) ||
+    items.length === 0 ||
+    typeof total === "undefined" ||
+    !address
+  ) {
+    return res
+      .status(400)
+      .json({
+        message:
+          "Missing or invalid order data. Customer, items, total, and address are required.",
+      });
+  }
+  const newOrder = {
+    id: `#A${Date.now().toString().slice(-4)}`,
+    customerName: customer.name,
+    customerEmail: customer.email,
+    date: new Date().toISOString().split("T")[0],
+    total,
+    status: "Pending",
+    items,
+    paymentMethod,
+    address,
+    transactionId: `txn_${Date.now()}`,
+  };
+  mockOrders.unshift(newOrder);
+
+  // REAL-TIME: Emit events to admin clients
+  io.emit("new_order", newOrder);
+  io.emit("stats_update", getDashboardStats());
+
+  res
+    .status(201)
+    .json({ message: "Order placed successfully", order: newOrder });
 });
 
+// NEW: Admin updates an order's status
+app.put("/api/orders/:id/status", (req, res) => {
+  const { status } = req.body;
+  const orderId = req.params.id;
+  const order = mockOrders.find((o) => o.id === orderId);
+
+  if (order) {
+    order.status = status;
+
+    // REAL-TIME: Emit events for status change and stats update
+    io.emit("order_updated", order);
+    io.emit("stats_update", getDashboardStats());
+
+    if (status === "Cancelled") {
+      io.emit("order_cancelled", {
+        ...order,
+        message: "Refund may be required.",
+      });
+    }
+
+    res.json(order);
+  } else {
+    res.status(404).send("Order not found");
+  }
+});
+
+app.get("/api/customers", (req, res) => res.json(mockCustomers));
 app.post("/api/customers/login", (req, res) => {
   const { email } = req.body;
-  if (!email) {
-    return res.status(400).send("Email is required");
-  }
   const foundUser = mockCustomerUsers[email.toLowerCase()];
-  if (foundUser) {
-    res.json(foundUser);
-  } else {
-    res.status(404).send("User not found");
-  }
+  if (foundUser) res.json(foundUser);
+  else res.status(404).send("User not found");
 });
-
 app.post("/api/customers", (req, res) => {
   const { name, email } = req.body;
-  if (!name || !email) {
+  if (!name || !email)
     return res.status(400).send("Name and email are required");
-  }
-
   if (
     mockCustomerUsers[email.toLowerCase()] ||
     mockCustomers.find((c) => c.email.toLowerCase() === email.toLowerCase())
   ) {
     return res.status(409).send("User with this email already exists.");
   }
-
-  const newCustomerId = `cust-${Date.now()}`;
   const newCustomer = {
-    id: newCustomerId,
+    id: `cust-${Date.now()}`,
     name,
     email,
     avatar: `https://i.pravatar.cc/150?u=${email}`,
@@ -281,37 +385,23 @@ app.post("/api/customers", (req, res) => {
     lastOrder: new Date().toISOString().split("T")[0],
   };
   mockCustomers.push(newCustomer);
-
-  const newCustomerUser = {
-    id: `cust-user-${Date.now()}`,
-    name,
-    email,
-  };
+  const newCustomerUser = { id: `cust-user-${Date.now()}`, name, email };
   mockCustomerUsers[email.toLowerCase()] = newCustomerUser;
-
   res.status(201).json(newCustomerUser);
 });
 
-app.get("/api/dashboard-stats", (req, res) => {
-  const totalRevenue = mockOrders.reduce((acc, order) => acc + order.total, 0);
-  const newOrdersCount = mockOrders.filter(
-    (o) => o.status === "Pending"
-  ).length;
-  const totalProducts = mockProducts.length;
-  const recentOrders = mockOrders.slice(0, 5);
+app.get("/api/dashboard-stats", (req, res) => res.json(getDashboardStats()));
+app.get("/", (req, res) => res.send("EasyOrganic Admin Backend is running."));
 
-  res.json({
-    totalRevenue,
-    newOrdersCount,
-    totalProducts,
-    recentOrders,
+// --- Socket.IO Connection ---
+io.on("connection", (socket) => {
+  console.log("An admin client connected:", socket.id);
+  socket.on("disconnect", () => {
+    console.log("An admin client disconnected:", socket.id);
   });
 });
 
-app.get("/", (req, res) => {
-  res.send("EasyOrganic Admin Backend is running.");
-});
-
-app.listen(PORT, () => {
+// --- Start Server ---
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

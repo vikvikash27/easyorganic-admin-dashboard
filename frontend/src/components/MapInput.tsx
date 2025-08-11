@@ -1,46 +1,241 @@
-import React from 'react';
-import Button from './ui/Button';
+import React, { useEffect, useRef, useState } from "react";
+import { LoaderIcon } from "./icons";
+
+// The google object is available globally from the script tag in index.html,
+// and its types are defined in src/types.ts.
 
 interface MapInputProps {
-  onLocationSelect: (location: { lat: number; lng: number }) => void;
-  selectedLocation: { lat: number; lng: number } | null;
-  onOpenModal: () => void;
+  onLocationSelect: (location: {
+    address: string;
+    city: string;
+    zip: string;
+    lat: number;
+    lng: number;
+  }) => void;
 }
 
-const MapInput: React.FC<MapInputProps> = ({ selectedLocation, onOpenModal }) => {
-  // NOTE: This key is intentionally left as a placeholder.
-  // The app will not function correctly until it's replaced in index.html.
-  const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; 
-  const defaultLocation = { lat: 28.6139, lng: 77.2090 }; // Delhi, India
-  const location = selectedLocation || defaultLocation;
+const parseGoogleAddress = (
+  geocodeResult: google.maps.PlaceResult
+): { address: string; city: string; zip: string } => {
+  if (!geocodeResult || !geocodeResult.address_components) {
+    return { address: "", city: "", zip: "" };
+  }
+
+  const components = geocodeResult.address_components;
+  const getComponent = (type: string) =>
+    components.find((c) => c.types.includes(type))?.long_name || "";
+
+  const streetNumber = getComponent("street_number");
+  const route = getComponent("route");
+
+  let streetAddress = `${streetNumber} ${route}`.trim();
+  if (!streetAddress) {
+    // Fallback to the first part of formatted_address for places without a clear street
+    streetAddress = (geocodeResult.formatted_address || "").split(",")[0];
+  }
+
+  const city =
+    getComponent("locality") ||
+    getComponent("administrative_area_level_2") ||
+    "";
+  const zip = getComponent("postal_code");
+
+  return { address: streetAddress, city, zip };
+};
+
+export const MapInput: React.FC<MapInputProps> = ({ onLocationSelect }) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState("Initializing map...");
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkGoogleScript = () => {
+      if (!isMounted) return;
+      if (typeof window.google !== "undefined" && window.google.maps) {
+        initMapAndServices();
+      } else {
+        setTimeout(checkGoogleScript, 100); // Poll until script is loaded
+      }
+    };
+
+    const initMapAndServices = () => {
+      if (!isMounted || !window.google) return;
+
+      const geocoder = new window.google.maps.Geocoder();
+
+      const reverseGeocode = (latlng: google.maps.LatLng) => {
+        if (!isMounted) return;
+        setIsLoading(true);
+        setMessage("Fetching address...");
+        geocoder.geocode(
+          { location: { lat: latlng.lat(), lng: latlng.lng() } },
+          (results, status) => {
+            if (!isMounted) return;
+            if (status === "OK" && results && results[0]) {
+              const locationDetails = parseGoogleAddress(results[0]);
+              onLocationSelect({
+                ...locationDetails,
+                lat: latlng.lat(),
+                lng: latlng.lng(),
+              });
+              setMessage("Address updated. Drag pin or search to change.");
+            } else {
+              console.error("Geocoder failed due to: " + status);
+              setMessage("Could not fetch address for this location.");
+            }
+            setIsLoading(false);
+          }
+        );
+      };
+
+      const createOrUpdateMarker = (
+        position: google.maps.LatLng,
+        shouldGeocode = true
+      ) => {
+        if (!mapRef.current) return;
+        if (!markerRef.current) {
+          markerRef.current = new window.google.maps.Marker({
+            position,
+            map: mapRef.current,
+            draggable: true,
+            animation: window.google.maps.Animation.DROP,
+          });
+          markerRef.current.addListener(
+            "dragend",
+            (e: google.maps.MapMouseEvent) => {
+              reverseGeocode(e.latLng);
+            }
+          );
+        } else {
+          markerRef.current.setPosition(position);
+        }
+        if (mapRef.current) {
+          mapRef.current.panTo(position);
+        }
+        if (shouldGeocode) {
+          reverseGeocode(position);
+        }
+      };
+
+      const initializeMap = (
+        center: { lat: number; lng: number },
+        zoom: number
+      ) => {
+        if (mapContainerRef.current && !mapRef.current) {
+          mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
+            center,
+            zoom,
+            disableDefaultUI: true,
+            zoomControl: true,
+          });
+
+          mapRef.current.addListener("click", (e: google.maps.MapMouseEvent) =>
+            createOrUpdateMarker(e.latLng)
+          );
+
+          if (searchInputRef.current) {
+            autocompleteRef.current =
+              new window.google.maps.places.Autocomplete(
+                searchInputRef.current
+              );
+            autocompleteRef.current.bindTo("bounds", mapRef.current);
+            autocompleteRef.current.setFields([
+              "address_components",
+              "geometry",
+              "name",
+              "formatted_address",
+            ]);
+
+            autocompleteRef.current.addListener("place_changed", () => {
+              const place = autocompleteRef.current?.getPlace();
+              if (place?.geometry?.location) {
+                createOrUpdateMarker(place.geometry.location, false); // Don't re-geocode
+                const locationDetails = parseGoogleAddress(place);
+                onLocationSelect({
+                  ...locationDetails,
+                  lat: place.geometry.location.lat(),
+                  lng: place.geometry.location.lng(),
+                });
+                setMessage("Address updated. Drag pin or search to change.");
+                mapRef.current?.setZoom(17);
+              }
+            });
+          }
+        }
+      };
+
+      if (navigator.geolocation) {
+        setMessage("Requesting your location...");
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            if (!isMounted) return;
+            const pos = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            initializeMap(pos, 16);
+            if (window.google) {
+              createOrUpdateMarker(
+                new window.google.maps.LatLng(pos.lat, pos.lng)
+              );
+            }
+          },
+          () => {
+            if (!isMounted) return;
+            const indiaCenter = { lat: 20.5937, lng: 78.9629 };
+            initializeMap(indiaCenter, 5);
+            setIsLoading(false);
+            setMessage(
+              "Location access denied. Search or click the map to set address."
+            );
+          }
+        );
+      } else {
+        const indiaCenter = { lat: 20.5937, lng: 78.9629 };
+        initializeMap(indiaCenter, 5);
+        setIsLoading(false);
+        setMessage("Geolocation not supported. Search or click the map.");
+      }
+    };
+
+    checkGoogleScript();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onLocationSelect]);
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-slate-700">Pin Delivery Location</label>
-      <div className="relative w-full h-48 rounded-lg overflow-hidden border">
-        {apiKey.includes('YOUR_') ? (
-            <div className="w-full h-full bg-slate-200 flex items-center justify-center text-center p-4 text-slate-600">
-                Please add a valid Google Maps API Key in `frontend/index.html` to enable map functionality.
-            </div>
-        ) : (
-            <iframe
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                loading="lazy"
-                allowFullScreen
-                src={`https://www.google.com/maps/embed/v1/view?key=${apiKey}&center=${location.lat},${location.lng}&zoom=15`}
-            ></iframe>
-        )}
-      </div>
-       <Button type="button" variant="secondary" onClick={onOpenModal}>
-        {selectedLocation ? 'Change Pinned Location' : 'Pin Location on Map'}
-      </Button>
-       {selectedLocation && (
-        <p className="text-xs text-green-700">
-          Location Pinned: {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
-        </p>
-      )}
+    <div>
+      <label
+        htmlFor="address-search"
+        className="block text-sm font-medium text-slate-700 mb-1"
+      >
+        Search or Click Map to Set Address
+      </label>
+      <input
+        id="address-search"
+        ref={searchInputRef}
+        type="text"
+        placeholder="Search for your address..."
+        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary mb-2"
+      />
+      <div
+        ref={mapContainerRef}
+        style={{ height: "300px", width: "100%" }}
+        className="rounded-lg border border-gray-300 bg-gray-100"
+        aria-label="Interactive map for selecting address"
+      />
+      <p className="text-sm text-gray-600 mt-2 flex items-center h-5">
+        {isLoading && <LoaderIcon className="w-4 h-4 mr-2" />}
+        <span>{message}</span>
+      </p>
     </div>
   );
 };

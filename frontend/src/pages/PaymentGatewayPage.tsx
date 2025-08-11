@@ -113,11 +113,23 @@ const PaymentGatewayPage: React.FC = () => {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            errorText ||
-              "Payment was processed, but failed to create order. Please contact support."
-          );
+          let errorMessage =
+            "Payment was processed, but failed to create order. Please contact support.";
+          const errorText = await response.text(); // Read body once
+          try {
+            // Try to parse as JSON
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorMessage;
+          } catch {
+            // If not JSON, use raw text
+            if (errorText && errorText.includes("Cannot POST")) {
+              errorMessage =
+                "Server error: Endpoint not found. Please contact support.";
+            } else {
+              errorMessage = errorText || errorMessage;
+            }
+          }
+          throw new Error(errorMessage);
         }
 
         clearCart();

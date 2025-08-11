@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Defines the structure for an admin user, including their role for access control.
 export interface AdminUser {
   id: string;
@@ -52,6 +54,7 @@ export interface Order {
   items: OrderItem[];
   paymentMethod: 'Card' | 'COD';
   transactionId: string;
+  address?: Address;
 }
 
 
@@ -82,7 +85,7 @@ export interface Address {
 
 // Defines the structure for a city in the location selector.
 export interface CityInfo {
-  name: string;
+  name:string;
   icon: React.FC<any>;
 }
 
@@ -94,6 +97,11 @@ declare global {
       lat(): number;
       lng(): number;
     }
+    
+    // Add a constructor signature for LatLng
+    const LatLng: {
+        new (lat: number, lng: number): LatLng;
+    };
 
     interface MapMouseEvent {
       latLng: LatLng;
@@ -104,6 +112,12 @@ declare global {
       addListener(eventName: string, handler: (event: MapMouseEvent) => void): any;
       setCenter(position: any): void;
       setZoom(zoom: number): void;
+      panTo(position: any): void;
+      bindTo(key: string, target: any): void;
+    }
+    
+    enum Animation {
+        DROP
     }
 
     class Marker {
@@ -112,15 +126,25 @@ declare global {
       addListener(eventName: string, handler: (event: MapMouseEvent) => void): any;
     }
 
-    // Geocoder interfaces for address lookup
+    // --- Geocoder interfaces for address lookup ---
     interface GeocoderAddressComponent {
       long_name: string;
       short_name: string;
       types: string[];
     }
-    interface GeocoderResult {
-      address_components: GeocoderAddressComponent[];
-      formatted_address: string;
+    
+    // An interface that covers results from both Geocoder and Autocomplete
+    interface PlaceResult {
+      address_components?: GeocoderAddressComponent[];
+      formatted_address?: string;
+      geometry?: { location: LatLng };
+      name?: string;
+    }
+
+    interface GeocoderResult extends PlaceResult {
+       // GeocoderResult specifically has these as non-optional
+       address_components: GeocoderAddressComponent[];
+       formatted_address: string;
     }
     type GeocoderStatus = 'OK' | 'ZERO_RESULTS' | 'OVER_QUERY_LIMIT' | 'REQUEST_DENIED' | 'INVALID_REQUEST' | 'UNKNOWN_ERROR';
     
@@ -130,6 +154,17 @@ declare global {
         request: { location: { lat: number; lng: number } },
         callback: (results: GeocoderResult[] | null, status: GeocoderStatus) => void
       ): void;
+    }
+    
+    // --- Places Autocomplete Service ---
+    namespace places {
+        class Autocomplete {
+            constructor(inputField: HTMLInputElement, opts?: any);
+            bindTo(key: string, map: Map): void;
+            setFields(fields: string[]): void;
+            addListener(eventName: string, handler: () => void): any;
+            getPlace(): PlaceResult;
+        }
     }
   }
 }

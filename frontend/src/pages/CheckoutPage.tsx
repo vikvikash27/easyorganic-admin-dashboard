@@ -5,7 +5,6 @@ import { useCustomerAuth } from "../hooks/useCustomerAuth";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import MapInput from "../components/MapInput";
-import LocationSelectorModal from "../components/LocationSelectorModal";
 import { Address, CartItem } from "../types";
 import { SpinnerIcon } from "../components/icons";
 
@@ -18,7 +17,6 @@ const CheckoutPage: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"Card" | "COD">("Card");
   const [address, setAddress] = useState<Address>({
     fullName: customer?.name || "",
@@ -36,26 +34,20 @@ const CheckoutPage: React.FC = () => {
     setAddress((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleLocationSelect = (location: { lat: number; lng: number }) => {
-    setAddress((prev) => ({ ...prev, location }));
-    if (!window.google || !window.google.maps.Geocoder) return;
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location }, (results, status) => {
-      if (status === "OK" && results && results[0]) {
-        const ac = results[0].address_components;
-        const get = (type: string) =>
-          ac.find((c) => c.types.includes(type))?.long_name || "";
-        const street = `${get("street_number")} ${get("route")}`.trim();
-        setAddress((prev) => ({
-          ...prev,
-          street: street || prev.street,
-          city:
-            get("locality") || get("administrative_area_level_3") || prev.city,
-          state: get("administrative_area_level_1") || prev.state,
-          zip: get("postal_code") || prev.zip,
-        }));
-      }
-    });
+  const handleMapAddressSelect = (details: {
+    address: string;
+    city: string;
+    zip: string;
+    lat: number;
+    lng: number;
+  }) => {
+    setAddress((prev) => ({
+      ...prev,
+      street: details.address || prev.street,
+      city: details.city || prev.city,
+      zip: details.zip || prev.zip,
+      location: { lat: details.lat, lng: details.lng },
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -93,10 +85,22 @@ const CheckoutPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          errorText || "Failed to place order. Please try again."
-        );
+        let errorMessage = "Failed to place order. Please try again.";
+        const errorText = await response.text(); // Read body once
+        try {
+          // Try to parse as JSON
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If not JSON, use the raw text
+          if (errorText && errorText.includes("Cannot POST")) {
+            errorMessage =
+              "Server error: Endpoint not found. Please contact support.";
+          } else {
+            errorMessage = errorText || errorMessage;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       clearCart();
@@ -183,11 +187,7 @@ const CheckoutPage: React.FC = () => {
               required
             />
             <div className="pt-4">
-              <MapInput
-                selectedLocation={address.location ?? null}
-                onLocationSelect={handleLocationSelect}
-                onOpenModal={() => setIsModalOpen(true)}
-              />
+              <MapInput onLocationSelect={handleMapAddressSelect} />
             </div>
             <div className="pt-4">
               <h3 className="text-lg font-medium text-slate-700 mb-2">
@@ -281,12 +281,6 @@ const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </form>
-      <LocationSelectorModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleLocationSelect}
-        currentLocation={address.location}
-      />
     </div>
   );
 };
