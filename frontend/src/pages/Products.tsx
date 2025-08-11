@@ -3,11 +3,13 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Table, { ColumnDefinition } from "../components/ui/Table";
 import Badge from "../components/ui/Badge";
-import { MoreVerticalIcon, SpinnerIcon } from "../components/icons";
+import { SpinnerIcon } from "../components/icons";
 import { Product } from "../types";
 import AddProductModal, {
   ProductFormData,
 } from "../components/AddProductModal";
+import EditProductModal from "../components/EditProductModal";
+import ActionMenu from "../components/ui/ActionMenu";
 
 const API_URL = "http://localhost:3001";
 
@@ -16,7 +18,9 @@ const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -54,8 +58,61 @@ const Products: React.FC = () => {
       const errorText = await response.text();
       throw new Error(errorText || "Failed to add product.");
     }
-    setIsModalOpen(false);
+    setIsAddModalOpen(false);
     fetchProducts(); // Refetch products to show the new one
+  };
+
+  const handleOpenEditModal = (product: Product) => {
+    setSelectedProduct(product);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this product? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/products/${productId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete product");
+      }
+      fetchProducts(); // Refetch products after deletion
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not delete product."
+      );
+      // Optional: show a toast notification for the error
+    }
+  };
+
+  const handleUpdateProduct = async (productData: ProductFormData) => {
+    if (!selectedProduct) return;
+
+    const response = await fetch(
+      `${API_URL}/api/products/${selectedProduct.id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...productData,
+          price: Number(productData.price),
+          stock: Number(productData.stock),
+        }),
+      }
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to update product.");
+    }
+    setIsEditModalOpen(false);
+    fetchProducts();
   };
 
   const columns: ColumnDefinition<Product>[] = [
@@ -105,10 +162,17 @@ const Products: React.FC = () => {
     {
       accessor: "id",
       header: "Actions",
-      cell: () => (
-        <Button variant="secondary" className="px-2 py-1">
-          <MoreVerticalIcon className="h-5 w-5" />
-        </Button>
+      cell: (item) => (
+        <ActionMenu
+          actions={[
+            { label: "Edit", onClick: () => handleOpenEditModal(item) },
+            {
+              label: "Delete",
+              onClick: () => handleDeleteProduct(item.id),
+              isDanger: true,
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -131,14 +195,22 @@ const Products: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-800">Products</h1>
-        <Button onClick={() => setIsModalOpen(true)}>Add Product</Button>
+        <Button onClick={() => setIsAddModalOpen(true)}>Add Product</Button>
       </div>
       <Card>{renderContent()}</Card>
       <AddProductModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
         onAddProduct={handleAddProduct}
       />
+      {selectedProduct && (
+        <EditProductModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdateProduct={handleUpdateProduct}
+          product={selectedProduct}
+        />
+      )}
     </div>
   );
 };

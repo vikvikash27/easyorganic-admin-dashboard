@@ -8,7 +8,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*", // Allow all origins for this example
-    methods: ["GET", "POST", "PUT"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
   },
 });
 
@@ -81,8 +81,8 @@ let mockProducts = [
 let mockOrders = [
   {
     id: "#A001",
-    customerName: "Alice Johnson",
-    customerEmail: "alice@example.com",
+    customerName: "Jane Doe",
+    customerEmail: "customer@example.com",
     orderTimestamp: "2024-05-20T10:30:05.123Z",
     total: 630,
     status: "Delivered",
@@ -103,7 +103,7 @@ let mockOrders = [
     paymentMethod: "Card",
     transactionId: `txn_${Date.now() - 500000}`,
     address: {
-      fullName: "Alice Johnson",
+      fullName: "Jane Doe",
       street: "456 Oak Avenue",
       city: "Metropolis",
       state: "State",
@@ -126,8 +126,8 @@ let mockOrders = [
   },
   {
     id: "#A002",
-    customerName: "Bob Williams",
-    customerEmail: "bob@example.com",
+    customerName: "Jane Doe",
+    customerEmail: "customer@example.com",
     orderTimestamp: "2024-05-21T11:45:30.456Z",
     total: 950,
     status: "Shipped",
@@ -142,7 +142,7 @@ let mockOrders = [
     paymentMethod: "Card",
     transactionId: `txn_${Date.now() - 400000}`,
     address: {
-      fullName: "Bob Williams",
+      fullName: "Jane Doe",
       street: "789 Pine Street",
       city: "Gotham",
       state: "State",
@@ -330,6 +330,57 @@ app.get("/api/products/:id", (req, res) => {
   const product = mockProducts.find((p) => p.id === req.params.id);
   if (product) res.json(product);
   else res.status(404).send("Product not found");
+});
+
+app.put("/api/products/:id", (req, res) => {
+  const { id } = req.params;
+  const productIndex = mockProducts.findIndex((p) => p.id === id);
+
+  if (productIndex === -1) {
+    return res.status(404).send("Product not found");
+  }
+
+  // Merge the existing product with new data, ensuring we don't accidentally erase fields
+  const updatedProduct = {
+    ...mockProducts[productIndex],
+    ...req.body,
+  };
+
+  // Ensure numeric types from the form body are correctly cast
+  if (req.body.price !== undefined) {
+    updatedProduct.price = Number(req.body.price);
+  }
+  if (req.body.stock !== undefined) {
+    updatedProduct.stock = Number(req.body.stock);
+  }
+
+  // Recalculate status based on the potentially new stock
+  updatedProduct.status =
+    updatedProduct.stock > 10
+      ? "In Stock"
+      : updatedProduct.stock > 0
+      ? "Low Stock"
+      : "Out of Stock";
+
+  // Atomically update the product in our mock database
+  mockProducts[productIndex] = updatedProduct;
+
+  // Notify clients of the change and send back the updated product
+  io.emit("stats_update", getDashboardStats());
+  res.json(updatedProduct);
+});
+
+app.delete("/api/products/:id", (req, res) => {
+  const { id } = req.params;
+  const initialLength = mockProducts.length;
+  mockProducts = mockProducts.filter((p) => p.id !== id);
+
+  if (mockProducts.length === initialLength) {
+    return res.status(404).send("Product not found");
+  }
+
+  io.emit("stats_update", getDashboardStats());
+  res.status(204).send(); // No content
 });
 
 app.get("/api/orders", (req, res) => res.json(mockOrders));
