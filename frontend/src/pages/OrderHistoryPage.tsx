@@ -15,8 +15,12 @@ const getStatusColor = (status: OrderStatus) => {
       return "green";
     case "Shipped":
       return "blue";
-    case "Pending":
+    case "Out for Delivery":
+      return "blue";
+    case "Processing":
       return "yellow";
+    case "Pending":
+      return "gray";
     case "Cancelled":
       return "red";
     default:
@@ -92,39 +96,47 @@ const OrderHistoryPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {orders.map((order) => (
-          <Card key={order.id} className="p-0 overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4">
-              <div>
-                <p className="text-sm text-slate-500">Order ID</p>
-                <p className="font-semibold text-slate-800">{order.id}</p>
+          <Link
+            to={`/account/orders/${encodeURIComponent(order.id)}`}
+            key={order.id}
+            className="block"
+          >
+            <Card className="p-0 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                <div>
+                  <p className="text-sm text-slate-500">Order ID</p>
+                  <p className="font-semibold text-slate-800">{order.id}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Date Placed</p>
+                  <p className="font-semibold text-slate-800">
+                    {new Date(order.orderTimestamp).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Total</p>
+                  <p className="font-semibold text-slate-800">
+                    ₹{order.total.toFixed(2)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-slate-500">Date Placed</p>
-                <p className="font-semibold text-slate-800">{order.date}</p>
+              <div className="p-4 flex justify-between items-center">
+                <div>
+                  <Badge color={getStatusColor(order.status)}>
+                    {order.status}
+                  </Badge>
+                  <p className="text-sm text-slate-500 mt-2">
+                    {order.items.length} item(s)
+                  </p>
+                </div>
+                <div>
+                  <Button variant="secondary" size="sm">
+                    View Details
+                  </Button>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-slate-500">Total</p>
-                <p className="font-semibold text-slate-800">
-                  ₹{order.total.toFixed(2)}
-                </p>
-              </div>
-            </div>
-            <div className="p-4 flex justify-between items-center">
-              <div>
-                <Badge color={getStatusColor(order.status)}>
-                  {order.status}
-                </Badge>
-                <p className="text-sm text-slate-500 mt-2">
-                  {order.items} item(s)
-                </p>
-              </div>
-              <div>
-                <Button variant="secondary" size="sm">
-                  View Details
-                </Button>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </Link>
         ))}
       </div>
     );

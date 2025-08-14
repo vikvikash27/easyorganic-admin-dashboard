@@ -5,15 +5,18 @@ import ProductCategoryCard from "./ProductCategoryCard";
 interface ProductMegaMenuProps {
   onClose: () => void;
   onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }
 
 const ProductMegaMenu: React.FC<ProductMegaMenuProps> = ({
   onClose,
   onMouseEnter,
+  onMouseLeave,
 }) => {
   return (
     <div
       onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className="absolute top-full left-0 right-0 bg-white shadow-lg border-t border-slate-200 animate-fade-in-up"
       style={{ animationDuration: "200ms" }}
     >

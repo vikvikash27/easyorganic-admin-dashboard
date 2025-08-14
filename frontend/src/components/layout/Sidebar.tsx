@@ -7,6 +7,7 @@ import {
   OrderIcon,
   CustomerIcon,
   SettingsIcon,
+  PaymentsIcon,
   Logo,
 } from "../icons";
 
@@ -35,6 +36,11 @@ const Sidebar: React.FC = () => {
       to: "/admin/customers",
       icon: <CustomerIcon className="h-5 w-5" />,
       label: "Customers",
+    },
+    {
+      to: "/admin/payments",
+      icon: <PaymentsIcon className="h-5 w-5" />,
+      label: "Payments",
     },
   ];
 

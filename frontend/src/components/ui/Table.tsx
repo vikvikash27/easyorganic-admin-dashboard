@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 // Defines the structure for a column in the table
 export interface ColumnDefinition<T> {
@@ -10,11 +10,12 @@ export interface ColumnDefinition<T> {
 interface TableProps<T> {
   data: T[];
   columns: ColumnDefinition<T>[];
+  rowClassName?: (item: T) => string;
 }
 
 // A generic table component that can be used to display any kind of data.
 // It takes data and column definitions as props to dynamically render the table.
-function Table<T>({ data, columns }: TableProps<T>) {
+function Table<T>({ data, columns, rowClassName }: TableProps<T>) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white">
@@ -32,7 +33,12 @@ function Table<T>({ data, columns }: TableProps<T>) {
         </thead>
         <tbody className="divide-y divide-slate-200">
           {data.map((item, index) => (
-            <tr key={index} className="hover:bg-slate-50">
+            <tr
+              key={index}
+              className={`hover:bg-slate-50 ${
+                rowClassName ? rowClassName(item) : ""
+              }`}
+            >
               {columns.map((col) => (
                 <td
                   key={String(col.accessor)}
