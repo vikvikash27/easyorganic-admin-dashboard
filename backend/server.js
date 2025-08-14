@@ -424,12 +424,10 @@ app.post("/api/orders", (req, res) => {
     typeof total === "undefined" ||
     !address
   ) {
-    return res
-      .status(400)
-      .json({
-        message:
-          "Missing or invalid order data. Customer, items, total, and address are required.",
-      });
+    return res.status(400).json({
+      message:
+        "Missing or invalid order data. Customer, items, total, and address are required.",
+    });
   }
 
   const now = new Date().toISOString();
@@ -448,6 +446,17 @@ app.post("/api/orders", (req, res) => {
     statusHistory: [{ status: "Pending", timestamp: now }],
   };
   mockOrders.unshift(newOrder);
+
+  // After placing an order, find the customer's main profile in `mockCustomers`
+  // and update their total spending and last order date. This keeps the
+  // customer data synchronized across the application.
+  const customerProfile = mockCustomers.find(
+    (c) => c.email.toLowerCase() === customer.email.toLowerCase()
+  );
+  if (customerProfile) {
+    customerProfile.totalSpent += total;
+    customerProfile.lastOrder = new Date(now).toISOString().split("T")[0];
+  }
 
   // REAL-TIME: Emit events to admin clients
   io.emit("new_order", newOrder);
@@ -499,12 +508,10 @@ app.post("/api/orders/:id/cancel", (req, res) => {
   }
 
   if (order.status !== "Pending") {
-    return res
-      .status(400)
-      .json({
-        message:
-          "This order cannot be cancelled as it is already being processed.",
-      });
+    return res.status(400).json({
+      message:
+        "This order cannot be cancelled as it is already being processed.",
+    });
   }
 
   order.status = "Cancelled";
