@@ -15,7 +15,7 @@ const PromoBanner: React.FC = () => {
           <img
             src={promoBannerImage}
             alt="Promotional banner for EasyOrganic honey, showing various jars and bottles of honey with a honeycomb on a yellow background."
-            className="w-full h-auto rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
+            className="w-full h-auto max-h-[60vh] rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
           />
         </a>
       </div>
